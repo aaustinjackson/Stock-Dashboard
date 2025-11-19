@@ -7,3 +7,5 @@ statsmodels
 prophet
 python-dateutil
 pytz
+cmdstanpy
+pystan

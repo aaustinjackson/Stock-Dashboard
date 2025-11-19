@@ -6,6 +6,5 @@ scikit-learn
 statsmodels
 python-dateutil
 pytz
-pystan
-prophet==1.1.5
+prophet>=1.2.1
 cmdstanpy

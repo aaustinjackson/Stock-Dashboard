@@ -4,8 +4,8 @@ numpy
 matplotlib
 scikit-learn
 statsmodels
-prophet
 python-dateutil
 pytz
-cmdstanpy
 pystan
+prophet==1.1.5
+cmdstanpy

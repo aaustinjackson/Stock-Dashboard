@@ -1,6 +1,3 @@
-# cd C:\Users\austi\PycharmProjects\StockBI\dashboard
-# streamlit run dashboard.py
-
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -15,6 +12,14 @@ import numpy as np
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_path = os.path.join(project_root, "data", "top10_stock_data.csv")
 precomputed_dir = os.path.join(project_root, "data", "precomputed_forecasts")
+
+# ---------------------------------------------
+# Debug
+# ---------------------------------------------
+st.write("Project root:", project_root)
+st.write("Data path exists?", os.path.exists(data_path))
+st.write("Precomputed dir exists?", os.path.exists(precomputed_dir))
+
 
 # ---------------------------------------------
 # Streamlit UI
@@ -140,4 +145,5 @@ st.write(f"**Predictions for {next_date.strftime('%Y-%m-%d')}:**")
 st.write(f"🔴 ARIMA: {fmt(next_arima)}")
 st.write(f"🟢 Random Forest: {fmt(next_rf)}")
 st.write(f"🔵 Prophet: {fmt(next_prophet)}")
+
 

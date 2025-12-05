@@ -47,17 +47,11 @@ df["RF"] = pd.to_numeric(df["RF"], errors="coerce")
 df["Prophet"] = pd.to_numeric(df["Prophet"], errors="coerce")
 
 
-# ---------------------------------------------
-# Fix weird starting values in forecasts
-# ---------------------------------------------
-first_actual = df["Actual"].iloc[0]
-
-# Replace early NaN or extreme forecast values
-for col in ["ARIMA", "RF", "Prophet"]:
-	# Fill first value with actual price
-	if pd.isna(df[col].iloc[0]) or abs(df[col].iloc[0] - first_actual) > first_actual * 0.20:
-		df.loc[df.index[0], col] = first_actual
-
+# ---------------------------------------------------------
+# REMOVE all rows that come before the first real data point
+# ---------------------------------------------------------
+df = df[df["Actual"].notna()].copy()
+df.reset_index(drop=True, inplace=True)
 
 # ---------------------------------------------
 # Date Range Selector
@@ -155,6 +149,7 @@ st.write(f"**Predictions for {next_date.strftime('%Y-%m-%d')}:**")
 st.write(f"🔴 ARIMA: {fmt(next_arima)}")
 st.write(f"🟢 Random Forest: {fmt(next_rf)}")
 st.write(f"🔵 Prophet: {fmt(next_prophet)}")
+
 
 
 

@@ -46,36 +46,52 @@ df["ARIMA"] = pd.to_numeric(df["ARIMA"], errors="coerce")
 df["RF"] = pd.to_numeric(df["RF"], errors="coerce")
 df["Prophet"] = pd.to_numeric(df["Prophet"], errors="coerce")
 
+
+# ---------------------------------------------
+# Fix weird starting values in forecasts
+# ---------------------------------------------
+first_actual = df["Actual"].iloc[0]
+
+# Replace early NaN or extreme forecast values
+for col in ["ARIMA", "RF", "Prophet"]:
+	# Fill first value with actual price
+	if pd.isna(df[col].iloc[0]) or abs(df[col].iloc[0] - first_actual) > first_actual * 0.20:
+		df.loc[df.index[0], col] = first_actual
+
+
 # ---------------------------------------------
 # Date Range Selector
 # ---------------------------------------------
 st.subheader("Select Time Range")
 range_option = st.radio(
-    "Choose period:",
-    ["1 Month", "1 Year", "All Data"],
-    index=0,
-    horizontal=True
+	"Choose period:",
+	["1 Week", "1 Month", "1 Year", "All Data"],
+	index=1,
+	horizontal=True
 )
 
 min_date = df["Date"].min()
 max_date = df["Date"].max()
 
-if range_option == "1 Month":
-    start_date = max_date - pd.Timedelta(days=30)
+if range_option == "1 Week":
+	start_date = max_date - pd.Timedelta(days=7)
+elif range_option == "1 Month":
+	start_date = max_date - pd.Timedelta(days=30)
 elif range_option == "1 Year":
-    start_date = max_date - pd.Timedelta(days=365)
+	start_date = max_date - pd.Timedelta(days=365)
 else:
-    start_date = min_date
+	start_date = min_date
 
 start_date = max(start_date, min_date)
 
 # Filter dataframe by selected range
 df_filtered = df[(df["Date"] >= start_date) & (df["Date"] <= max_date)].copy()
 if df_filtered.empty:
-    st.warning("No data available in the selected date range.")
-    st.stop()
+	st.warning("No data available in the selected date range.")
+	st.stop()
 
 st.write(f"Selected date range: {df_filtered['Date'].min().date()} → {df_filtered['Date'].max().date()}")
+
 
 # ---------------------------------------------
 # Compute forecast errors
@@ -139,6 +155,7 @@ st.write(f"**Predictions for {next_date.strftime('%Y-%m-%d')}:**")
 st.write(f"🔴 ARIMA: {fmt(next_arima)}")
 st.write(f"🟢 Random Forest: {fmt(next_rf)}")
 st.write(f"🔵 Prophet: {fmt(next_prophet)}")
+
 
 
 

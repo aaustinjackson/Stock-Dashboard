@@ -26,7 +26,6 @@ st.write("Compare ARIMA, Random Forest, and Prophet model forecasts.")
 df_all = pd.read_csv(data_path, parse_dates=["Date"])
 tickers = df_all["Ticker"].dropna().astype(str).unique()
 tickers = sorted(tickers)
-
 ticker = st.selectbox("Select a stock:", tickers)
 
 # ---------------------------------------------
@@ -48,38 +47,37 @@ df["Prophet"] = pd.to_numeric(df["Prophet"], errors="coerce")
 # ---------------------------------------------------------
 df = df[df["Actual"].notna()].copy()
 df.reset_index(drop=True, inplace=True)
-
 first_actual_date = df["Date"].min()
 df = df[df["Date"] >= first_actual_date].copy()
-
 df = df.dropna(subset=["ARIMA", "RF", "Prophet"], how="all")
 
 # ---------------------------------------------------------
-# Remove warm-up spike (first forecast row)
+# Robust initial spike removal
 # ---------------------------------------------------------
-if len(df) > 1:
-    df = df.iloc[1:].copy()   # This removes the spike
-
-# ---------------------------------------------------------
-# Remove warm-up spikes from forecasts
-# ---------------------------------------------------------
-
-def remove_spike_rows(df, cols, threshold=0.50):
+def remove_initial_spikes(df, cols, threshold=0.3):
     """
-    Removes rows where any forecast jumps more than `threshold`
-    (50% by default) compared to the previous row.
+    Removes initial rows where any forecast is more than `threshold` away from Actual.
+    Stops removing once forecasts stabilize.
     """
-    mask = pd.Series(True, index=df.index)  # <-- important: match df index
+    mask = pd.Series(True, index=df.index)
     
-    for col in cols:
-        pct_jump = df[col].pct_change().abs()
-        mask &= (pct_jump < threshold) | (pct_jump.isna())
-    
+    for i in range(len(df)):
+        row = df.iloc[i]
+        too_far = False
+        for col in cols:
+            if pd.notna(row[col]) and pd.notna(row["Actual"]):
+                if abs(row[col] - row["Actual"]) / row["Actual"] > threshold:
+                    too_far = True
+                    break
+        if too_far:
+            mask.iloc[i] = False
+        else:
+            # stop removing once a row is stable
+            break
     return df[mask].copy()
 
-df = remove_spike_rows(df, ["ARIMA", "RF", "Prophet"])
+df = remove_initial_spikes(df, ["ARIMA", "RF", "Prophet"], threshold=0.3)
 df.reset_index(drop=True, inplace=True)
-
 
 # ---------------------------------------------
 # Date Range Selector
@@ -105,7 +103,6 @@ else:
     start_date = min_date
 
 start_date = max(start_date, min_date)
-
 df_filtered = df[(df["Date"] >= start_date) & (df["Date"] <= max_date)].copy()
 
 if df_filtered.empty:
@@ -150,7 +147,6 @@ formatter = mdates.ConciseDateFormatter(locator)
 ax.xaxis.set_major_locator(locator)
 ax.xaxis.set_major_formatter(formatter)
 fig.autofmt_xdate(rotation=25)
-
 st.pyplot(fig, use_container_width=True)
 
 # ---------------------------------------------
@@ -174,5 +170,3 @@ st.write(f"**Predictions for {next_date.strftime('%Y-%m-%d')}:**")
 st.write(f"🔴 ARIMA: {fmt(next_arima)}")
 st.write(f"🟢 Random Forest: {fmt(next_rf)}")
 st.write(f"🔵 Prophet: {fmt(next_prophet)}")
-
-

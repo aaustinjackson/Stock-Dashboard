@@ -60,6 +60,27 @@ df = df.dropna(subset=["ARIMA", "RF", "Prophet"], how="all")
 if len(df) > 1:
     df = df.iloc[1:].copy()   # This removes the spike
 
+# ---------------------------------------------------------
+# Remove warm-up spikes from forecasts
+# ---------------------------------------------------------
+
+def remove_spike_rows(df, cols, threshold=0.50):
+    """
+    Removes rows where any forecast jumps more than `threshold`
+    (50% by default) compared to the previous row.
+    """
+    mask = pd.Series([True] * len(df))  # keep all rows initially
+    
+    for col in cols:
+        pct_jump = df[col].pct_change().abs()
+        mask &= (pct_jump < threshold) | (pct_jump.isna())
+    
+    return df[mask].copy()
+
+df = remove_spike_rows(df, ["ARIMA", "RF", "Prophet"])
+df.reset_index(drop=True, inplace=True)
+
+
 # ---------------------------------------------
 # Date Range Selector
 # ---------------------------------------------
@@ -153,3 +174,4 @@ st.write(f"**Predictions for {next_date.strftime('%Y-%m-%d')}:**")
 st.write(f"🔴 ARIMA: {fmt(next_arima)}")
 st.write(f"🟢 Random Forest: {fmt(next_rf)}")
 st.write(f"🔵 Prophet: {fmt(next_prophet)}")
+

@@ -69,7 +69,7 @@ def remove_spike_rows(df, cols, threshold=0.50):
     Removes rows where any forecast jumps more than `threshold`
     (50% by default) compared to the previous row.
     """
-    mask = pd.Series([True] * len(df))  # keep all rows initially
+    mask = pd.Series(True, index=df.index)  # <-- important: match df index
     
     for col in cols:
         pct_jump = df[col].pct_change().abs()
@@ -174,4 +174,5 @@ st.write(f"**Predictions for {next_date.strftime('%Y-%m-%d')}:**")
 st.write(f"🔴 ARIMA: {fmt(next_arima)}")
 st.write(f"🟢 Random Forest: {fmt(next_rf)}")
 st.write(f"🔵 Prophet: {fmt(next_prophet)}")
+
 

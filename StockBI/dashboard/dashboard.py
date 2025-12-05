@@ -48,10 +48,17 @@ df["Prophet"] = pd.to_numeric(df["Prophet"], errors="coerce")
 
 
 # ---------------------------------------------------------
-# REMOVE all rows that come before the first real data point
+# REMOVE all rows before actual data begins
 # ---------------------------------------------------------
 df = df[df["Actual"].notna()].copy()
 df.reset_index(drop=True, inplace=True)
+df = df.dropna(subset=["Actual"]).copy()
+
+# Also ensure forecasts are only shown when actuals exist
+df["ARIMA"] = pd.to_numeric(df["ARIMA"], errors="coerce")
+df["RF"] = pd.to_numeric(df["RF"], errors="coerce")
+df["Prophet"] = pd.to_numeric(df["Prophet"], errors="coerce")
+
 
 # ---------------------------------------------
 # Date Range Selector
@@ -149,6 +156,7 @@ st.write(f"**Predictions for {next_date.strftime('%Y-%m-%d')}:**")
 st.write(f"🔴 ARIMA: {fmt(next_arima)}")
 st.write(f"🟢 Random Forest: {fmt(next_rf)}")
 st.write(f"🔵 Prophet: {fmt(next_prophet)}")
+
 
 
 

@@ -51,33 +51,31 @@ first_actual_date = df["Date"].min()
 df = df[df["Date"] >= first_actual_date].copy()
 df = df.dropna(subset=["ARIMA", "RF", "Prophet"], how="all")
 
-# ---------------------------------------------------------
-# Robust initial spike removal
-# ---------------------------------------------------------
-def remove_initial_spikes(df, cols, threshold=0.3):
-    """
-    Removes initial rows where any forecast is more than `threshold` away from Actual.
-    Stops removing once forecasts stabilize.
-    """
-    mask = pd.Series(True, index=df.index)
-    
-    for i in range(len(df)):
-        row = df.iloc[i]
-        too_far = False
-        for col in cols:
-            if pd.notna(row[col]) and pd.notna(row["Actual"]):
-                if abs(row[col] - row["Actual"]) / row["Actual"] > threshold:
-                    too_far = True
-                    break
-        if too_far:
-            mask.iloc[i] = False
-        else:
-            # stop removing once a row is stable
-            break
-    return df[mask].copy()
 
-df = remove_initial_spikes(df, ["ARIMA", "RF", "Prophet"], threshold=0.3)
-df.reset_index(drop=True, inplace=True)
+# ---------------------------------------------------------
+# Robust initial spike removal (skip first few forecast rows)
+# ---------------------------------------------------------
+def remove_initial_spikes_robust(df, cols, skip_rows=3, threshold=0.5):
+    """
+    Removes the first `skip_rows` after Actual begins
+    AND any rows where forecast jumps > threshold fraction of Actual.
+    """
+    if len(df) > skip_rows:
+        df = df.iloc[skip_rows:].copy()
+    
+    # Optional: remove any remaining extreme outliers
+    mask = pd.Series(True, index=df.index)
+    for col in cols:
+        pct_dev = abs(df[col] - df["Actual"]) / df["Actual"]
+        mask &= (pct_dev < threshold) | (pct_dev.isna())
+    
+    df = df[mask].copy()
+    df.reset_index(drop=True, inplace=True)
+    return df
+
+# Apply
+df = remove_initial_spikes_robust(df, ["ARIMA", "RF", "Prophet"], skip_rows=3, threshold=0.5)
+
 
 # ---------------------------------------------
 # Date Range Selector
@@ -170,3 +168,4 @@ st.write(f"**Predictions for {next_date.strftime('%Y-%m-%d')}:**")
 st.write(f"🔴 ARIMA: {fmt(next_arima)}")
 st.write(f"🟢 Random Forest: {fmt(next_rf)}")
 st.write(f"🔵 Prophet: {fmt(next_prophet)}")
+

@@ -13,8 +13,6 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_path = os.path.join(project_root, "data", "top10_stock_data.csv")
 precomputed_dir = os.path.join(project_root, "data", "precomputed_forecasts")
 
-
-
 # ---------------------------------------------
 # Streamlit UI
 # ---------------------------------------------
@@ -26,7 +24,6 @@ st.write("Compare ARIMA, Random Forest, and Prophet model forecasts.")
 # Load available tickers
 # ---------------------------------------------
 df_all = pd.read_csv(data_path, parse_dates=["Date"])
-# Ensure tickers are strings and remove NaNs
 tickers = df_all["Ticker"].dropna().astype(str).unique()
 tickers = sorted(tickers)
 
@@ -37,7 +34,7 @@ ticker = st.selectbox("Select a stock:", tickers)
 # ---------------------------------------------
 forecast_file = os.path.join(precomputed_dir, f"{ticker}_forecasts.csv")
 if not os.path.exists(forecast_file):
-    st.error(f"No precomputed forecasts found for {ticker}. Run the preprocessing script first.")
+    st.error(f"No precomputed forecasts found for {ticker}. Run preprocessing first.")
     st.stop()
 
 df = pd.read_csv(forecast_file, parse_dates=["Date"])
@@ -46,56 +43,55 @@ df["ARIMA"] = pd.to_numeric(df["ARIMA"], errors="coerce")
 df["RF"] = pd.to_numeric(df["RF"], errors="coerce")
 df["Prophet"] = pd.to_numeric(df["Prophet"], errors="coerce")
 
-
 # ---------------------------------------------------------
 # Remove all rows before actual data begins
 # ---------------------------------------------------------
-# Keep only rows where Actual exists
 df = df[df["Actual"].notna()].copy()
 df.reset_index(drop=True, inplace=True)
 
-# Also force forecast columns to start only where Actual starts
 first_actual_date = df["Date"].min()
 df = df[df["Date"] >= first_actual_date].copy()
 
-# Remove any rows where all forecasts are NaN
 df = df.dropna(subset=["ARIMA", "RF", "Prophet"], how="all")
 
-
+# ---------------------------------------------------------
+# Remove warm-up spike (first forecast row)
+# ---------------------------------------------------------
+if len(df) > 1:
+    df = df.iloc[1:].copy()   # This removes the spike
 
 # ---------------------------------------------
 # Date Range Selector
 # ---------------------------------------------
 st.subheader("Select Time Range")
 range_option = st.radio(
-	"Choose period:",
-	["1 Week", "1 Month", "1 Year", "All Data"],
-	index=1,
-	horizontal=True
+    "Choose period:",
+    ["1 Week", "1 Month", "1 Year", "All Data"],
+    index=1,
+    horizontal=True
 )
 
 min_date = df["Date"].min()
 max_date = df["Date"].max()
 
 if range_option == "1 Week":
-	start_date = max_date - pd.Timedelta(days=7)
+    start_date = max_date - pd.Timedelta(days=7)
 elif range_option == "1 Month":
-	start_date = max_date - pd.Timedelta(days=30)
+    start_date = max_date - pd.Timedelta(days=30)
 elif range_option == "1 Year":
-	start_date = max_date - pd.Timedelta(days=365)
+    start_date = max_date - pd.Timedelta(days=365)
 else:
-	start_date = min_date
+    start_date = min_date
 
 start_date = max(start_date, min_date)
 
-# Filter dataframe by selected range
 df_filtered = df[(df["Date"] >= start_date) & (df["Date"] <= max_date)].copy()
+
 if df_filtered.empty:
-	st.warning("No data available in the selected date range.")
-	st.stop()
+    st.warning("No data available in the selected date range.")
+    st.stop()
 
 st.write(f"Selected date range: {df_filtered['Date'].min().date()} → {df_filtered['Date'].max().date()}")
-
 
 # ---------------------------------------------
 # Compute forecast errors
@@ -108,7 +104,7 @@ prophet_error = df_filtered["Actual"] - df_filtered["Prophet"]
 # Plotting
 # ---------------------------------------------
 show_errors = st.checkbox("Show forecast errors instead of predicted prices", value=False)
-fig, ax = plt.subplots(figsize=(12,6))
+fig, ax = plt.subplots(figsize=(12, 6))
 
 if not show_errors:
     ax.scatter(df_filtered["Date"], df_filtered["Actual"], label="Actual Prices", s=30, zorder=3)
@@ -143,8 +139,6 @@ st.subheader("Next-Day Forecasts")
 next_date = df_filtered["Date"].max() + pd.Timedelta(days=1)
 
 def next_day_forecast(df):
-    # Take last row as proxy for iterative forecast (simple approach)
-    last_actual = df["Actual"].iloc[-1]
     next_arima = df["ARIMA"].iloc[-1]
     next_rf = df["RF"].iloc[-1]
     next_prophet = df["Prophet"].iloc[-1]
@@ -159,10 +153,3 @@ st.write(f"**Predictions for {next_date.strftime('%Y-%m-%d')}:**")
 st.write(f"🔴 ARIMA: {fmt(next_arima)}")
 st.write(f"🟢 Random Forest: {fmt(next_rf)}")
 st.write(f"🔵 Prophet: {fmt(next_prophet)}")
-
-
-
-
-
-
-
